@@ -1878,6 +1878,112 @@ class FirmwareVolume(FirmwareObject):
             _ffs.dump(safe_path(parent, name))
 
 
+class CompressedFirmwareVolume(FirmwareObject):
+    '''A firmware volume stored as a single compressed stream.
+
+    Some capsules and raw images hold an entire firmware volume compressed
+    with LZMA, Tiano, or EFI compression instead of using compressed
+    sections. This object unpacks the stream and exposes the volume inside
+    through the same FirmwareObject interface as a plain FirmwareVolume.
+    '''
+
+    _ALGORITHMS = [
+        ("lzma", efi_compressor.LzmaDecompress),
+        ("tiano", efi_compressor.TianoDecompress),
+        ("efi", efi_compressor.EfiDecompress),
+    ]
+
+    _COMPRESSORS = {
+        "lzma": efi_compressor.LzmaCompress,
+        "tiano": efi_compressor.TianoCompress,
+        "efi": efi_compressor.EfiCompress,
+    }
+
+    name = None
+    '''string: An optional name or offset of the compressed volume.'''
+
+    volume = None
+    '''FirmwareVolume: The volume unpacked from the compressed stream.'''
+
+    def __init__(self, data, name="0"):
+        self.name = name
+        self.valid_header = False
+        self.volume = None
+        self.compression = None
+        self.data = None
+        self.guid = None
+        self._data = bytes(data)
+        # Without a stream length the input is consumed as a whole.
+        self.size = len(self._data)
+        self.attrs = {}
+
+        for compression, algorithm in self._ALGORITHMS:
+            results = decompress([algorithm], self._data)
+            if results is None:
+                continue
+            decompressed = results[1]
+            if len(decompressed) < FirmwareVolume._HEADER_SIZE:
+                continue
+            volume = FirmwareVolume(decompressed, name)
+            if not volume.valid_header:
+                continue
+            self.compression = compression
+            self.volume = volume
+            self.data = decompressed
+            self.guid = volume.guid
+            self.attrs = {
+                "compression": compression,
+                "compressed_size": len(self._data),
+                "decompressed_size": len(decompressed),
+            }
+            if compression in ("tiano", "efi"):
+                # Tiano/EFI streams lead with compressed/uncompressed sizes.
+                compressed_size = struct.unpack("<I", self._data[:4])[0]
+                if 8 + compressed_size <= len(self._data):
+                    self.size = 8 + compressed_size
+            self.valid_header = True
+            return
+
+    @property
+    def objects(self):
+        return [self.volume] if self.volume is not None else []
+
+    @limit_nesting(False)
+    def process(self):
+        if self.volume is None:
+            return False
+        return self.volume.process()
+
+    def build(self, generate_checksum=False, debug=False):
+        if self.volume is None:
+            return self._data
+        data = self.volume.build(generate_checksum)
+        if data == self.data:
+            # Recompressing unchanged data would not give the same bytes.
+            return self._data
+        compress = self._COMPRESSORS[self.compression]
+        return compress(data, len(data))
+
+    def showinfo(self, ts='', index=None):
+        if self.volume is None:
+            return
+        print("%s %s" % (
+            blue("%sCompressed Firmware Volume:" % ts),
+            purple(self.compression)))
+        self.volume.showinfo(ts + " ")
+
+    def to_dict(self):
+        return {
+            'name': self.name,
+            'compression': self.compression,
+            'volume': self.volume.to_dict() if self.volume is not None else None,
+        }
+
+    def dump(self, parent="", index=None):
+        if self.volume is not None:
+            self.volume.dump(parent)
+
+
 class MultiVolumeContainer(FirmwareObject):
     '''The AutoParser attempts to search for 'stacked' UEFIFirmwareVolumes.
 

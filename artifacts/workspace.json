@@ -1,0 +1,17 @@
+{
+  "root": "/home/dev/feedback/uid31125",
+  "B": "/home/dev/feedback/uid31125",
+  "sha": "2f20ba7a663dcb9d069de9f37208c09eb5a18b12",
+  "wslDistro": "Ubuntu-26.04",
+  "source": {
+    "owner": "theopolis",
+    "repo": "uefi-firmware-parser",
+    "sha": "2f20ba7a663dcb9d069de9f37208c09eb5a18b12"
+  },
+  "fork": {
+    "owner": "Rrr119",
+    "repo": "uefi-firmware-parser",
+    "cloneUrl": "https://github.com/Rrr119/uefi-firmware-parser.git"
+  },
+  "at": "2026-11-20T23:31:50.417Z"
+}

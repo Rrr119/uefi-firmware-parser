@@ -4,7 +4,8 @@ The TypeTester may be useful if parsing a large number of UEFI-related binaries.
 """
 
 
-from ..uefi import FirmwareVolume, FirmwareCapsule, FirmwareFile
+from ..uefi import FirmwareVolume, CompressedFirmwareVolume, \
+    FirmwareCapsule, FirmwareFile
 from ..pfs import PFSFile, PFHeader, DellUpdateBinary
 from ..flash import FlashDescriptor
 from ..me import MeContainer, MeManifestHeader
@@ -104,6 +105,16 @@ class DellUpdateBinaryTester(TypeTester):
     def match(self, data):
         return DellUpdateBinary(data).valid_header
 
+
+class CompressedFirmwareVolumeTester(TypeTester):
+    parser = CompressedFirmwareVolume
+    # The compressed stream has no magic; decompress the whole input.
+    header_size = None
+
+    def match(self, data):
+        return CompressedFirmwareVolume(data).valid_header
+
+
 TESTERS = [
     FlashDescriptorTester,
     UEFICapsuleTester,
@@ -116,4 +127,5 @@ TESTERS = [
     DellUpdateBinaryTester,
     PFHeaderTester,
     UEFIFirmwareVolumeTester,
+    CompressedFirmwareVolumeTester,
 ]

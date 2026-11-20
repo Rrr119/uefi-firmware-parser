@@ -1,7 +1,7 @@
 '''UEFI Firmware parser utils.
 '''
 from . import uefi
-from .uefi import MultiVolumeContainer
+from .uefi import MultiVolumeContainer, CompressedFirmwareVolume
 
 from .misc import checker
 from .base import FirmwareObject, RawObject, AutoRawObject
@@ -14,6 +14,7 @@ class AutoParser(object):
 
     The UEFI Firmware module supports several types of file formats:
       - UEFI Firmware Volumes
+      - Compressed Firmware Volumes
       - (U)EFI Capsule Updates
       - UEFI Firmware Files
       - Dell "PFS" Files
